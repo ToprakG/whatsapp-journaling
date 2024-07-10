@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Chat Statistics</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #ff6600;
+        }
+        .upload-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .upload-section input[type="file"] {
+            margin-bottom: 10px;
+        }
+        .upload-section button {
+            background-color: #ff6600;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .upload-section button:hover {
+            background-color: #e65c00;
+        }
+        .statistics {
+            display: none;
+            margin-top: 20px;
+        }
+        .statistics h2 {
+            text-align: center;
+        }
+        .stat {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #fffcf0;
+            border-left: 5px solid #ff6600;
+        }
+        .journal {
+            margin-top: 20px;
+        }
+
+        .journal-entry {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+        }
+
+        .journal-entry h3 {
+            color: #ff6600;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .journal-entry ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .journal-entry li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WhatsApp Stats/Journal</h1>
+        <div class="upload-section">
+            <label for="chatFile">Upload WhatsApp Chat File (txt):</label>
+            <input type="file" id="chatFile" accept=".txt">
+            <button onclick="processFile()">Upload</button>
+        </div>
+        <div class="statistics">
+            <h2>Statistics</h2>
+            <div class="stat" id="totalMessages"></div>
+            <div class="stat" id="totalWords"></div>
+            <div class="stat" id="avgMessageLength"></div>
+            <div class="stat" id="chatLength"></div>
+            <div class="stat" id="storageNeeds"></div>
+            <div class="stat" id="co2Contribution"></div>
+            <div class="stat" id="mostActiveDays"></div>
+            <div class="stat" id="mostActiveHour"></div>
+            <div class="stat" id="longestMessage"></div>
+            <div class="stat" id="mostUsedWord"></div>
+        </div>
+    </div>
+    <script>
+        // Define the time ranges for journal entries
+        const timeRanges = [
+            { start: '00:00', end: '06:00', label: 'Night' },
+            { start: '06:00', end: '12:00', label: 'Morning' },
+            { start: '12:00', end: '18:00', label: 'Afternoon' },
+            { start: '18:00', end: '24:00', label: 'Evening' }
+        ];
+    
+        function processFile() {
+            const fileInput = document.getElementById('chatFile');
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const text = e.target.result;
+                    const statistics = analyzeChat(text);
+                    displayStatistics(statistics);
+                    displayJournal(statistics);
+                };
+                reader.readAsText(file);
+            }
+        }
+    
+        function analyzeChat(text) {
+            const messages = text.split('\n').filter(line => line.trim() !== '');
+            let totalMessages = messages.length;
+            let totalWords = 0;
+            let totalLength = 0;
+            let wordCount = {};
+            let dateCount = {};
+            let hourCount = {};
+            let longestMessage = { length: 0, text: '' };
+    
+            messages.forEach(message => {
+                const parts = message.split(' ');
+                if (parts.length < 3) return; // Skip lines that don't have date, time, and content
+    
+                const date = parts[0];
+                const time = parts[1];
+                const content = parts.slice(2).join(' ');
+    
+                const words = content.split(' ').length;
+                totalWords += words;
+                totalLength += content.length;
+    
+                content.split(' ').forEach(word => {
+                    // Remove square brackets [ and ]
+                    word = word.replace(/[\[\]]/g, '');
+                    word = word.toLowerCase();
+                    if (word !== 'pm' && word !== 'am') { // Exclude PM and AM
+                        if (wordCount[word]) {
+                            wordCount[word]++;
+                        } else {
+                            wordCount[word] = 1;
+                        }
+                    }
+                });
+    
+                // Count dates
+                if (dateCount[date]) {
+                    dateCount[date].push(content); // Store messages by date
+                } else {
+                    dateCount[date] = [content];
+                }
+    
+                // Count hours
+                const hour = time.split(':')[0];
+                if (hourCount[hour]) {
+                    hourCount[hour]++;
+                } else {
+                    hourCount[hour] = 1;
+                }
+    
+                // Find longest message
+                if (content.length > longestMessage.length) {
+                    longestMessage.length = content.length;
+                    longestMessage.text = content;
+                }
+            });
+    
+            const avgMessageLength = totalLength / totalMessages;
+    
+            // Convert chat length to meters (assuming average word length)
+            const chatLengthInMeters = totalWords * 0.001; // example conversion factor
+    
+            // Calculate storage needs and CO2 contribution (example factors)
+            const storageNeeds = totalLength * 2; // bytes per character
+            const co2Contribution = storageNeeds * 0.00002; // grams per byte
+    
+            // Find most active days
+            const mostActiveDays = Object.keys(dateCount)
+                .sort((a, b) => dateCount[b].length - dateCount[a].length) // Sort by message count in descending order
+                .slice(0, 15); // Get the top 4 most active days
+    
+            // Find most used word
+            const mostUsedWord = Object.keys(wordCount).reduce((a, b) => wordCount[a] > wordCount[b] ? a : b);
+    
+            return {
+                totalMessages,
+                totalWords,
+                avgMessageLength,
+                chatLengthInMeters,
+                storageNeeds,
+                co2Contribution,
+                mostActiveDays,
+                longestMessage,
+                mostUsedWord,
+                dateCount // Include all messages grouped by date
+            };
+        }
+    
+        function displayStatistics(stats) {
+            document.getElementById('totalMessages').textContent = `Total Messages: ${stats.totalMessages}`;
+            document.getElementById('totalWords').textContent = `Total Words: ${stats.totalWords}`;
+            document.getElementById('avgMessageLength').textContent = `Average Message Length: ${stats.avgMessageLength.toFixed(2)} characters`;
+            document.getElementById('chatLength').textContent = `Chat Length: ${stats.chatLengthInMeters.toFixed(2)} meters`;
+            document.getElementById('storageNeeds').textContent = `Storage Needs: ${stats.storageNeeds.toFixed(2)} bytes`;
+            document.getElementById('co2Contribution').textContent = `CO2 Contribution: ${stats.co2Contribution.toFixed(2)} grams`;
+            document.getElementById('mostActiveDays').textContent = `Most Active Days: ${stats.mostActiveDays.join(', ')}`;
+            document.getElementById('longestMessage').textContent = `Longest Message: ${stats.longestMessage.text} (${stats.longestMessage.length} characters)`;
+            document.getElementById('mostUsedWord').textContent = `Most Used Word: ${stats.mostUsedWord}`;
+    
+            document.querySelector('.statistics').style.display = 'block';
+        }
+    
+        function displayJournal(stats) {
+            const journalContainer = document.createElement('div');
+            journalContainer.classList.add('journal');
+    
+            // Display messages for each of the most active days
+            stats.mostActiveDays.forEach(day => {
+                const dayMessages = stats.dateCount[day];
+                if (dayMessages) {
+                    const journalEntry = createJournalEntry(day, dayMessages.slice(0, 20)); // Display first 20 messages
+                    journalContainer.appendChild(journalEntry);
+                }
+            });
+    
+            document.querySelector('.container').appendChild(journalContainer);
+        }
+    
+        function createJournalEntry(label, messages) {
+            const entry = document.createElement('div');
+            entry.classList.add('journal-entry');
+            entry.innerHTML = `
+                <h3>${label}</h3>
+                <ul>
+                    ${messages.map(message => `<li>${message}</li>`).join('')}
+                </ul>
+            `;
+            return entry;
+        }
+    
+        // Example usage:
+        // For demonstration, assume a text file has been uploaded via an input with id 'chatFile'
+        // processFile(); // Uncomment this line to trigger processing when a file is uploaded
+    </script>    
+      
+</body>
+</html>
